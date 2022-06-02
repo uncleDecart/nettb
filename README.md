@@ -10,4 +10,4 @@ Note that nettb uses Golang [modules](https://github.com/golang/go/wiki/Modules)
 
 ## What can it do?
 
-Checkout project [wiki](https://github.com/golang/go/wiki/Modules)
+Checkout project [wiki](https://github.com/uncleDecart/nettb/wiki)
