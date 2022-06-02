@@ -13,6 +13,7 @@ type Logger interface {
 	Functionf(format string, args ...interface{})
 }
 
+// NetDev reads /proc/net/dev file and returns network devices listed there
 func NetDev(log Logger) ([]string, error) {
 	content, err := ioutil.ReadFile("/proc/net/dev")
 	if err != nil {
@@ -39,6 +40,7 @@ func processNetDev(lines []string, log Logger) []string {
 	return ans
 }
 
+// PciToIfNameMap returns map of PCI addresses for every device in /proc/net/dev
 func PciToIfNameMap(log Logger) (map[string]string, error) {
 	netDevIfaces, err := NetDev(log)
 	if err != nil {
