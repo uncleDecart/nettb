@@ -2,8 +2,8 @@
 ![Go Version](https://img.shields.io/badge/go%20version-%3E=1.17-61CFDD.svg?style=flat-square)
 [![PkgGoDev](https://pkg.go.dev/badge/mod/github.com/uncleDecart/nettb)](https://pkg.go.dev/mod/github.com/uncleDecart/nettb)
 
-# nettb
 Network tool belt - Go networking without hustle 
+
 
 ## Install
 
@@ -11,7 +11,3 @@ Network tool belt - Go networking without hustle
 $ go get https://github.com/uncleDecart/nettb
 ```
 Note that nettb uses Golang [modules](https://github.com/golang/go/wiki/Modules)
-
-## What can it do?
-
-Checkout project [wiki](https://github.com/uncleDecart/nettb/wiki)
