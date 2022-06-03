@@ -66,7 +66,7 @@ func getDirNames(path string, log Logger) ([]string, error) {
 				log.Functionf("Error happend during walk %v", err)
 				return err
 			}
-			if info.IsDir() {
+			if info.IsDir() || info.Mode()&os.ModeSymlink == os.ModeSymlink {
 				*fs = append(*fs, info.Name())
 			}
 			return nil
