@@ -82,8 +82,13 @@ func setupTestPciToIfNameMap(root string, folders map[string]string) func() {
 	}
 	for pci_addr, d := range folders {
 		symlink := filepath.Join(root, pci_addr)
+		device_path := filepath.Join(root, d)
+		err = os.Mkdir(device_path, 0755)
+		if err != nil {
+			panic(err)
+		}
 		ioutil.WriteFile(symlink, []byte("Test\n"), 0644)
-		os.Symlink(pci_addr, filepath.Join(root, d))
+		os.Symlink(symlink, filepath.Join(device_path, "/device"))
 	}
 	return func() {
 		os.RemoveAll(root)

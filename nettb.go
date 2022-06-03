@@ -96,7 +96,7 @@ func getPciAddrsForDevices(root string, devices []string, log Logger) map[string
 	pciBdfRe := regexp.MustCompile("[0-9a-f]{4}:[0-9a-f]{2,4}:[0-9a-f]{2}\\.[0-9a-f]")
 	res := make(map[string]string)
 	for _, d := range devices {
-		path, err := filepath.EvalSymlinks(filepath.Join(root, d))
+		path, err := filepath.EvalSymlinks(filepath.Join(root, d, "/device"))
 		if err != nil {
 			log.Functionf("Cannot evaluate symlink for %s device. Error %s", d, err)
 			continue
