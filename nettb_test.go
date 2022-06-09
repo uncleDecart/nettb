@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -32,10 +33,12 @@ func TestNetDev(t *testing.T) {
 }
 
 func TestIntersection(t *testing.T) {
-	s1 := []string{"a", "b", "c", "d"}
-	s2 := []string{"d", "e", "f", "h"}
-	want := []string{"d"}
+	s1 := []string{"dummy0", "eth0", "eth1", "flow-mon-dummy", "ip6tnl0", "keth0", "keth1", "lo", "tunl0"}
+	s2 := []string{"lo", "tunl0", "ip6tnl0", "keth0", "keth1", "eth0", "eth1", "dummy0", "flow-mon-dummy"}
+	want := []string{"dummy0", "ip6tnl0", "eth0", "eth1", "keth0", "keth1", "lo", "tunl0", "flow-mon-dummy"}
 	got := intersection(s1, s2)
+	sort.Strings(want)
+	sort.Strings(got)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Failed got %v, want %v", got, want)
 	}
@@ -52,27 +55,6 @@ func setupTestGetDirNames(root string, folders []string) func() {
 	return func() {
 		os.RemoveAll(filepath.Join(wd, root))
 	}
-}
-
-func TestGetDirNames(t *testing.T) {
-	root := "test/"
-	folders := []string{"a", "b", "c", "d"}
-	defer setupTestGetDirNames(root, folders)()
-
-	var log StubLogger
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Got error during getting current directory %v", err)
-	}
-	got, err := getDirNames(filepath.Join(wd, root), log)
-	if err != nil {
-		t.Fatalf("Got error during function call %v", err)
-	}
-
-	if !reflect.DeepEqual(folders, got) {
-		t.Fatalf("Failed got %v, want %v", got, folders)
-	}
-
 }
 
 func setupTestPciToIfNameMap(root string, folders map[string]string) func() {

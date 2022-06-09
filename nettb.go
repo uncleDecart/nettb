@@ -3,7 +3,6 @@ package nettb
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -47,10 +46,15 @@ func PciToIfNameMap(log Logger) (map[string]string, error) {
 		return nil, err
 	}
 
-	sysClassNetPath := "/sys/class/net"
-	sysClassNetDevices, err := getDirNames(sysClassNetPath, log)
+	const sysClassNetPath = "/sys/class/net"
+
+	info, err := ioutil.ReadDir(sysClassNetPath)
 	if err != nil {
 		return nil, err
+	}
+	var sysClassNetDevices []string
+	for _, f := range info {
+		sysClassNetDevices = append(sysClassNetDevices, f.Name())
 	}
 
 	ifaces := intersection(netDevIfaces, sysClassNetDevices)
@@ -58,52 +62,31 @@ func PciToIfNameMap(log Logger) (map[string]string, error) {
 	return getPciAddrsForDevices(sysClassNetPath, ifaces, log), nil
 }
 
-func getDirNames(path string, log Logger) ([]string, error) {
-	var dirs []string
-	getDirs := func(fs *[]string) filepath.WalkFunc {
-		return func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				log.Functionf("Error happend during walk %v", err)
-				return err
-			}
-			if info.IsDir() || info.Mode()&os.ModeSymlink == os.ModeSymlink {
-				*fs = append(*fs, info.Name())
-			}
-			return nil
-		}
-	}
-	err := filepath.Walk(path, getDirs(&dirs))
-	if err != nil {
-		return nil, err
-	}
-	return dirs[1:], nil // Since we don't want to inlclude root directory
-}
-
 func intersection(s1, s2 []string) (inter []string) {
 	hash := make(map[string]bool)
 	for _, e := range s1 {
-		hash[e] = true
+		hash[strings.TrimSpace(e)] = true
 	}
 	for _, e := range s2 {
-		if hash[e] {
-			inter = append(inter, e)
+		if hash[strings.TrimSpace(e)] {
+			inter = append(inter, strings.TrimSpace(e))
 		}
 	}
 	return inter
 }
 
 func getPciAddrsForDevices(root string, devices []string, log Logger) map[string]string {
-	pciBdfRe := regexp.MustCompile("[0-9a-f]{4}:[0-9a-f]{2,4}:[0-9a-f]{2}\\.[0-9a-f]")
+	pciBdfRe := regexp.MustCompile("[0-9a-f]{4}:[0-9a-f]{2,4}:[0-9a-f]{2}\\.[0-9a-f]$")
 	res := make(map[string]string)
 	for _, d := range devices {
 		path, err := filepath.EvalSymlinks(filepath.Join(root, d, "/device"))
 		if err != nil {
-			log.Functionf("Cannot evaluate symlink for %s device. Error %s", d, err)
+			log.Functionf("Cannot evaluate symlink %s for %s device. Error %s", filepath.Join(root, d, "/device"), d, err)
 			continue
 		}
 		pci_addr := pciBdfRe.FindString(path)
 		if pci_addr == "" {
-			log.Functionf("PCI address is not in BFD notation for %s device", d)
+			log.Functionf("PCI address %s is not in BFD notation for %s device", path, d)
 			continue
 		}
 		res[pci_addr] = d
