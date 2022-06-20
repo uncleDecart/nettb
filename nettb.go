@@ -1,11 +1,13 @@
 package nettb
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 type Logger interface {
@@ -13,7 +15,7 @@ type Logger interface {
 }
 
 // NetDev reads /proc/net/dev file and returns network devices listed there
-func NetDev(log Logger) ([]string, error) {
+func NetDev() ([]string, error) {
 	content, err := ioutil.ReadFile("/proc/net/dev")
 	if err != nil {
 		return nil, err
@@ -23,25 +25,55 @@ func NetDev(log Logger) ([]string, error) {
 		return nil, fmt.Errorf("/proc/net/dev does not contain any interfaces")
 	}
 
-	return processNetDev(procnetdev, log), nil
+	return processNetDev(procnetdev), nil
 }
 
-func processNetDev(lines []string, log Logger) []string {
+func processNetDev(lines []string) []string {
 	var ans []string
 	for _, iface := range lines[2:] { // first two lines are headerlines
 		idx := strings.Index(iface, ":")
 		if idx > -1 {
 			ans = append(ans, iface[:idx])
-		} else {
-			log.Functionf("Somethings wrong with %s", iface)
 		}
 	}
 	return ans
 }
 
+func GetPciToIfNameMapByTimeout(timeout time.Duration) (map[string]string, error) {
+	toCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	c := asyncPciToIfNameMap(toCtx)
+	for {
+		select {
+		case ans := <-c:
+			return ans, nil
+		case <-toCtx.Done():
+			return nil, fmt.Errorf("GetPciToIfNameMapByTimeout reached timeout %v", timeout)
+		}
+	}
+}
+
+func asyncPciToIfNameMap(ctx context.Context) chan map[string]string {
+	c := make(chan (map[string]string))
+	go func() {
+		select {
+		default:
+			time.Sleep(1 * time.Second)
+			ifNameMap, err := PciToIfNameMap()
+			if err == nil && ifNameMap != nil {
+				c <- ifNameMap
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}()
+	return c
+}
+
 // PciToIfNameMap returns map of PCI addresses for every device in /proc/net/dev
-func PciToIfNameMap(log Logger) (map[string]string, error) {
-	netDevIfaces, err := NetDev(log)
+func PciToIfNameMap() (map[string]string, error) {
+	netDevIfaces, err := NetDev()
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +91,7 @@ func PciToIfNameMap(log Logger) (map[string]string, error) {
 
 	ifaces := intersection(netDevIfaces, sysClassNetDevices)
 
-	return getPciAddrsForDevices(sysClassNetPath, ifaces, log), nil
+	return getPciAddrsForDevices(sysClassNetPath, ifaces), nil
 }
 
 func intersection(s1, s2 []string) (inter []string) {
@@ -75,18 +107,16 @@ func intersection(s1, s2 []string) (inter []string) {
 	return inter
 }
 
-func getPciAddrsForDevices(root string, devices []string, log Logger) map[string]string {
+func getPciAddrsForDevices(root string, devices []string) map[string]string {
 	pciBdfRe := regexp.MustCompile("[0-9a-f]{4}:[0-9a-f]{2,4}:[0-9a-f]{2}\\.[0-9a-f]$")
 	res := make(map[string]string)
 	for _, d := range devices {
 		path, err := filepath.EvalSymlinks(filepath.Join(root, d, "/device"))
 		if err != nil {
-			log.Functionf("Cannot evaluate symlink %s for %s device. Error %s", filepath.Join(root, d, "/device"), d, err)
 			continue
 		}
 		pci_addr := pciBdfRe.FindString(path)
 		if pci_addr == "" {
-			log.Functionf("PCI address %s is not in BFD notation for %s device", path, d)
 			continue
 		}
 		res[pci_addr] = d

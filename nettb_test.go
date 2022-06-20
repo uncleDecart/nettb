@@ -1,7 +1,6 @@
 package nettb
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -10,23 +9,14 @@ import (
 	"testing"
 )
 
-type StubLogger struct {
-	log []string
-}
-
-func (l StubLogger) Functionf(format string, args ...interface{}) {
-	l.log = append(l.log, fmt.Sprintf(format, args...))
-}
-
 func TestNetDev(t *testing.T) {
 	// Not calling NetDev directly, to skip reading file
 	input := []string{"HEADER LINE 1",
 		"HEADER LINE 2",
 		"lo: 1421 123 123 123",
 		"enp0s5: 123 123 123 9 123 912"}
-	var log StubLogger
 	want := []string{"lo", "enp0s5"}
-	got := processNetDev(input, log)
+	got := processNetDev(input)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("Failed got %v, want %v", got, want)
 	}
@@ -91,11 +81,10 @@ func TestPciToIfNameMap(t *testing.T) {
 		devs = append(devs, value)
 	}
 
-	var log StubLogger
-	got := getPciAddrsForDevices(root, devs, log)
+	got := getPciAddrsForDevices(root, devs)
 
 	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("Failed got %v, want %v. Log: %v", got, want, log)
+		t.Fatalf("Failed got %v, want %v", got, want)
 	}
 
 }
